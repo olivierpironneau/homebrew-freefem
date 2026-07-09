@@ -3,8 +3,8 @@
 ## How do I install these formulae?
 
 ```ruby
-brew tap "olivierpironneau/freefem"
-brew "freefem"
+brew tap olivierpironneau/freefem
+brew install freefem
 ```
 Or
 
