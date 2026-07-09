@@ -2,16 +2,19 @@
 
 ## How do I install these formulae?
 
+```ruby
+brew tap "olivierpironneau/freefem"
+brew "freefem"
+```
+Or
+
 `brew install olivierpironneau/freefem/freefem`
 
 Or `brew tap olivierpironneau/freefem` and then `brew install freefem`.
 
 Or, in a `brew bundle` `Brewfile`:
 
-```ruby
-tap "olivierpironneau/freefem"
-brew "freefem"
-```
+
 
 ## Documentation
 
