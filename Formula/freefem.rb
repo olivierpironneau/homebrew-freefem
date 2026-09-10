@@ -462,6 +462,7 @@ class Freefem < Formula
       next unless macho_p.call(f)
 
       rpaths_to_add = []
+      change_args = []
       raw_deps.call(f).each do |dep|
         real = resolve_dep.call(f, dep)
         if real.nil? && dep.start_with?("@rpath/")
@@ -481,7 +482,7 @@ class Freefem < Formula
 
         info = copied[real]
         new_ref = info[:rpath_ref] || "@rpath/#{File.basename(real)}"
-        system "install_name_tool", "-change", dep, new_ref, f if dep != new_ref
+        change_args.concat(["-change", dep, new_ref]) if dep != new_ref
         rpaths_to_add << (info[:rpath_ref] ? extlib.to_s : info[:rpath_dir])
       end
 
@@ -500,19 +501,30 @@ class Freefem < Formula
       # meaningless in ITS copy's state -> segfault. Only a handful of
       # rpaths are ever intentionally ours; drop everything else.
       our_rpaths = [extlib.to_s, gnudir.to_s, (petsc_dir/"r/lib").to_s, (petsc_dir/"c/lib").to_s]
-      rpaths_of.call(f).each do |rp|
-        next if our_rpaths.include?(rp)
+      existing_rpaths = rpaths_of.call(f)
+      delete_args = existing_rpaths.reject { |rp| our_rpaths.include?(rp) }.flat_map { |rp| ["-delete_rpath", rp] }
+      # Some files (confirmed: FreeFem++/FreeFem++-mpi, which already
+      # link against ff-petsc/r/lib via -Wl,-rpath at compile time) come
+      # in with one of our rpaths ALREADY present -- install_name_tool
+      # refuses to -add_rpath a duplicate ("would duplicate path"), so
+      # only add the ones genuinely missing. (Previously masked: the old
+      # one-flag-per-call form silently swallowed this exact error via a
+      # blanket rescue around each -add_rpath call.)
+      add_args = (rpaths_to_add.uniq - existing_rpaths).flat_map { |rp| ["-add_rpath", rp] }
+      all_args = change_args + delete_args + add_args
 
-        system "install_name_tool", "-delete_rpath", rp, f
-      rescue StandardError
-        nil
-      end
+      # One install_name_tool invocation per EDIT (as this used to do --
+      # a separate call per -change/-delete_rpath/-add_rpath) corrupts
+      # some files' __LINKEDIT segment on certain Xcode toolchains --
+      # confirmed via CI: "file not in an order that can be processed
+      # (link edit information does not fill the __LINKEDIT segment)" on
+      # BOTH Xcode 15.4 and 16.4, never reproduced locally against a
+      # newer Xcode-beta toolchain that happens to tolerate it. Batch
+      # every edit for a given file into the ONE call install_name_tool
+      # itself is designed for (its own docs show -change/-delete_rpath/
+      # -add_rpath combined in a single invocation) instead.
+      system "install_name_tool", *all_args, f unless all_args.empty?
 
-      rpaths_to_add.uniq.each do |rp|
-        system "install_name_tool", "-add_rpath", rp, f
-      rescue StandardError
-        nil
-      end
       system "codesign", "--remove-signature", f
       system "codesign", "-s", "-", f
     end
