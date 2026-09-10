@@ -1,4 +1,4 @@
-# Olivierpironneau Freefem
+# Olivierpironneau FreeFem
 
 ## How do I install these formulae?
 
