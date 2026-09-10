@@ -19,15 +19,22 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
-      - name: Resolve this tap's expected path
-        run: echo "TAP_PATH=$(brew --repo olivierpironneau/freefem)" >> "$GITHUB_ENV"
-
-      # Check out directly into Homebrew's own expected tap location, so
-      # `olivierpironneau/freefem/freefem` resolves immediately -- no
-      # separate network `brew tap` clone needed.
       - uses: actions/checkout@v4
-        with:
-          path: ${{ env.TAP_PATH }}
+
+      # actions/checkout refuses to write outside the job's own workspace
+      # directory, so it can't target Homebrew's tap path directly.
+      # Symlink the real checkout there instead -- `olivierpironneau/
+      # freefem/freefem` then resolves immediately (no separate network
+      # `brew tap` clone needed), and writes through the symlink (the
+      # bottle-hash merge below, `git commit`, ...) land in the actual
+      # checkout, not a copy.
+      - name: Symlink this checkout into Homebrew's expected tap path
+        run: |
+          TAP_PATH="$(brew --repo olivierpironneau/freefem)"
+          echo "TAP_PATH=$TAP_PATH" >> "$GITHUB_ENV"
+          mkdir -p "$(dirname "$TAP_PATH")"
+          rm -rf "$TAP_PATH"
+          ln -s "$GITHUB_WORKSPACE" "$TAP_PATH"
 
       - name: Build
         run: brew install --build-bottle --verbose olivierpironneau/freefem/freefem
@@ -57,12 +64,15 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 15
     steps:
-      - name: Resolve this tap's expected path
-        run: echo "TAP_PATH=$(brew --repo olivierpironneau/freefem)" >> "$GITHUB_ENV"
-
       - uses: actions/checkout@v4
-        with:
-          path: ${{ env.TAP_PATH }}
+
+      - name: Symlink this checkout into Homebrew's expected tap path
+        run: |
+          TAP_PATH="$(brew --repo olivierpironneau/freefem)"
+          echo "TAP_PATH=$TAP_PATH" >> "$GITHUB_ENV"
+          mkdir -p "$(dirname "$TAP_PATH")"
+          rm -rf "$TAP_PATH"
+          ln -s "$GITHUB_WORKSPACE" "$TAP_PATH"
 
       - uses: actions/download-artifact@v4
         with:
