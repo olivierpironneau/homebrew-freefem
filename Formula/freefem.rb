@@ -5,10 +5,18 @@ class Freefem < Formula
   sha256 "b1198448c0394d42d8371e398aee209a92a50067082d866cdf5f11f56a636835"
   license "LGPL-3.0-only"
 
+  # Populated by .github/workflows/bottle.yml (manual dispatch) -- it
+  # builds+tests+bottles on GitHub-hosted macOS runners, uploads the
+  # tarballs to this repo's "bottles" GitHub Release (assets get
+  # overwritten in place on every run, so this one release/root_url
+  # never needs to change across version or rebuild bumps), and pushes
+  # the resulting sha256 lines back here via `brew bottle --merge
+  # --write`. No sha256 lines yet -- CI hasn't run since this tap started
+  # publishing bottles that way; until it does (or on any machine/OS
+  # combination it doesn't cover), `brew install` transparently falls
+  # back to building from source.
   bottle do
-    root_url "file://#{Dir.home}/FreeFem-bottles"
-    rebuild 1
-    sha256 arm64_golden_gate: "b5a26ed9fc044f241944978e357b3de130b6a9549b0d5a130201cfaf501e44b8"
+    root_url "https://github.com/olivierpironneau/homebrew-freefem/releases/download/bottles"
   end
 
   depends_on "autoconf" => :build
