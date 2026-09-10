@@ -438,7 +438,21 @@ class Freefem < Formula
             # confirmed) install their dylibs read-only, which then
             # blocks the install-name rewrite below.
             chmod "u+w", target
-            MachO::Tools.change_dylib_id(target.to_s, "@rpath/#{bn}")
+            # install_name_tool, not MachO::Tools.change_dylib_id: a file
+            # ruby-macho has written to apparently isn't always laid out
+            # the way Apple's OWN install_name_tool expects for a LATER
+            # edit -- confirmed via CI (never reproduced locally): every
+            # single file that hit "fatal error: file not in an order
+            # that can be processed (link edit information does not fill
+            # the __LINKEDIT segment)" on Xcode 15.4/16.4, across two
+            # separate runs, was an extlib/ copy that got its ID set via
+            # MachO::Tools here and was THEN edited again by
+            # install_name_tool in the rewrite loop below -- petsc_self_
+            # files and primary_files, never touched by MachO::Tools at
+            # all, never hit it. Keeping the whole edit pipeline in
+            # Apple's own tool avoids the cross-tool interop risk
+            # entirely, whatever its exact cause.
+            system "install_name_tool", "-id", "@rpath/#{bn}", target.to_s
             system "codesign", "--remove-signature", target.to_s
           end
           copied[real] = { rpath_ref: "@rpath/#{bn}" }
