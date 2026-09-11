@@ -438,22 +438,22 @@ class Freefem < Formula
             # confirmed) install their dylibs read-only, which then
             # blocks the install-name rewrite below.
             chmod "u+w", target
-            # install_name_tool, not MachO::Tools.change_dylib_id: a file
-            # ruby-macho has written to apparently isn't always laid out
-            # the way Apple's OWN install_name_tool expects for a LATER
-            # edit -- confirmed via CI (never reproduced locally): every
-            # single file that hit "fatal error: file not in an order
-            # that can be processed (link edit information does not fill
-            # the __LINKEDIT segment)" on Xcode 15.4/16.4, across two
-            # separate runs, was an extlib/ copy that got its ID set via
-            # MachO::Tools here and was THEN edited again by
-            # install_name_tool in the rewrite loop below -- petsc_self_
-            # files and primary_files, never touched by MachO::Tools at
-            # all, never hit it. Keeping the whole edit pipeline in
-            # Apple's own tool avoids the cross-tool interop risk
-            # entirely, whatever its exact cause.
-            system "install_name_tool", "-id", "@rpath/#{bn}", target.to_s
-            system "codesign", "--remove-signature", target.to_s
+            # Its dylib ID gets set below, in the SAME single
+            # install_name_tool call the final rewrite loop already
+            # makes for every extlib/ file (folded in via id_args) --
+            # not here. Confirmed root cause of the __LINKEDIT corruption
+            # bug: it was never about ruby-macho, or about how many
+            # flags land in one invocation -- it was TWO SEPARATE
+            # install_name_tool process invocations against the same
+            # file (this one setting -id, a later one in the rewrite
+            # loop doing -change/-add_rpath/etc, with a codesign
+            # --remove-signature in between) that some Xcode toolchain
+            # versions (confirmed: 15.4 and 16.4) can't tolerate.
+            # petsc_self_files/primary_files, which only ever get ONE
+            # install_name_tool invocation total, never hit it -- moving
+            # the ID change into that same one invocation for extlib
+            # files too closes the gap instead of just changing which
+            # tool does the (still separate) first edit.
           end
           copied[real] = { rpath_ref: "@rpath/#{bn}" }
         end
@@ -474,6 +474,12 @@ class Freefem < Formula
 
     (primary_files + Dir[extlib/"*.dylib"] + petsc_self_files).uniq.each do |f|
       next unless macho_p.call(f)
+
+      # extlib/ copies need their dylib ID changed to @rpath/<basename>
+      # (originally done as a separate install_name_tool -id call right
+      # after copying -- see the comment above where they're copied for
+      # why that's now folded into this file's ONE call instead).
+      id_args = f.start_with?("#{extlib}/") ? ["-id", "@rpath/#{File.basename(f)}"] : []
 
       rpaths_to_add = []
       change_args = []
@@ -500,7 +506,7 @@ class Freefem < Formula
         rpaths_to_add << (info[:rpath_ref] ? extlib.to_s : info[:rpath_dir])
       end
 
-      next if rpaths_to_add.empty?
+      next if rpaths_to_add.empty? && id_args.empty?
 
       # Strip any EXISTING rpath that isn't one of ours before adding the
       # ones we actually need. Confirmed root cause of a real crash: PETSc's
@@ -525,7 +531,7 @@ class Freefem < Formula
       # one-flag-per-call form silently swallowed this exact error via a
       # blanket rescue around each -add_rpath call.)
       add_args = (rpaths_to_add.uniq - existing_rpaths).flat_map { |rp| ["-add_rpath", rp] }
-      all_args = change_args + delete_args + add_args
+      all_args = id_args + change_args + delete_args + add_args
 
       # One install_name_tool invocation per EDIT (as this used to do --
       # a separate call per -change/-delete_rpath/-add_rpath) corrupts
