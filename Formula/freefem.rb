@@ -11,12 +11,13 @@ class Freefem < Formula
   # overwritten in place on every run, so this one release/root_url
   # never needs to change across version or rebuild bumps), and pushes
   # the resulting sha256 lines back here via `brew bottle --merge
-  # --write`. No sha256 lines yet -- CI hasn't run since this tap started
-  # publishing bottles that way; until it does (or on any machine/OS
-  # combination it doesn't cover), `brew install` transparently falls
-  # back to building from source.
+  # --write`. Covers arm64 Sonoma/Sequoia for now; on any other machine
+  # or OS, `brew install` transparently falls back to building from
+  # source.
   bottle do
     root_url "https://github.com/olivierpironneau/homebrew-freefem/releases/download/bottles"
+    sha256 arm64_sequoia: "7d95ff03765bd152405b94ebe40902215c7a08b2c03e3a1814477c9703cc2699"
+    sha256 arm64_sonoma:  "adaa0ada97693bc567ec43b19d4b65c16f14726b9d89f5a1a1c91674a827bbe3"
   end
 
   depends_on "autoconf" => :build

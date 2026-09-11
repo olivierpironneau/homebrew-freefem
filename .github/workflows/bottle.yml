@@ -92,6 +92,13 @@ jobs:
       - name: Merge per-OS bottle hashes into the formula and commit
         run: |
           cd "$TAP_PATH"
+          # `brew bottle --merge` is a "developer command" that refuses
+          # to load a formula from a tap it hasn't been told to trust --
+          # confirmed via CI: "Refusing to load formula
+          # olivierpironneau/freefem/freefem from untrusted tap
+          # olivierpironneau/freefem." (brew install, used in the bottle
+          # job above, doesn't hit this gate -- only this command does.)
+          brew trust olivierpironneau/freefem
           json_files=()
           while IFS= read -r f; do json_files+=("$f"); done < <(find "$GITHUB_WORKSPACE/artifacts" -name '*.bottle*.json')
           brew bottle --merge --write --no-commit "${json_files[@]}"
