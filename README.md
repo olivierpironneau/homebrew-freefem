@@ -8,20 +8,11 @@ freefem.org has a .dmg which installs freefem, with one advantage: you can doubl
 brew tap olivierpironneau/freefem
 brew install freefem
 ```
-Or
-
-`brew install olivierpironneau/freefem/freefem`
-
-Or `brew tap olivierpironneau/freefem` and then `brew install freefem`.
-
-Or, in a `brew bundle` `Brewfile`:
-
-
 
 ## Documentation
 
 `brew help`, `man brew` or check [Homebrew's documentation](https://docs.brew.sh).
 
-Note that PETSC is not part of this formula.  For PETSC you have to compite freefem from the source.
+Note that PETSC and MPI is part of this formula.  
 
 Note also that this formula does not install a freefem.aapp in the application folder.  It could be done by typing 'freefem-install-app' after the brew install, but this app does not open a choose-file dialog, so it's pretty useless (we are working on it).
