@@ -1,5 +1,7 @@
 # Olivierpironneau FreeFem
 
+freefem.org has a .dmg which installs freefem, with one advantage: you can double click FreeFEM.app in the "Applications" folder.  If you think you will use freefem only via the terminal or VS Code or TextMate, then use homebrew to install freefem.
+
 ## How do I install these formulae?
 
 ```ruby
